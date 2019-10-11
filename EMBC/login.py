@@ -1,5 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import pytesseract
 from PIL import Image,ImageEnhance
@@ -34,7 +37,7 @@ class main():
 
     def open(self):
         # 打开浏览器
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
         driver.get(self.url)
         driver.implicitly_wait(10)
         # 浏览器最大化
@@ -73,47 +76,54 @@ class EMBClogin():
     def get_driver(self, driver):
         self.driver = driver
 
-    def submit_login(self, img_element, imgcode_element, submit_element,times = 10):
-        code = ''
-        login_handle = self.driver.current_window_handle
+    def submit_login(self, img_element, imgcode_element, submit_element,times = 1):
+
+        # login_handle = self.driver.current_window_handle
         for i in range(times):
             code = self.get_code(img_element)
             imgcode_element.send_keys(code)
             submit_element.click()
-            all_handles = self.driver.window_handles
-            c = 0
-            for handle in all_handles:
-                if handle != login_handle:
-                    c = 1
-                    self.driver.switch_to(handle)
-                    tanchuang = self.driver.current_window_handle
-                    self.driver.find_element(By.XPATH,'/html/body/div[5]/div[3]/div/button').click()
-                    all_handles = self.driver.window_handles
-                    for i in all_handles:
-                        if i != tanchuang:
-                            self.driver.switch_to(i)
+            #
+            # try:
+            #     WebDriverWait(self.driver, 20).until(
+            #         EC.presence_of_element_located(
+            #             ((By.XPATH,'/html/body/div[5]/div[3]/div/button'))
+            #         )
+            #     )
+            #     self.driver.find_element(By.XPATH,'/html/body/div[5]/div[3]/div/button').submit()
+            # except Exception as e:
+            #     print(e)
+            #     break
 
-            if c == 0:
-                break
             if i == (times-1):
                 self.driver.quit()
                 assert '验证码获取解析错误'
-        return code
 
+
+    def switch_window_choose(self, num):
+        all_windows = self.driver.window_handles
+        self.driver.switch_to(all_windows[num-1])
+
+    def switch_window_new(self):
+        all_windows = self.driver.window_handles
+        self.driver.switch_to(all_windows[-1])
+
+    def switch_window_init(self):
+        all_windows = self.driver.window_handles
+        self.driver.switch_to(all_windows[0])
 
     def get_code(self, img_element,times = 50):
         # 获取验证码
-        code = ''
         for i in range(times):
             code = self.img_code()
-            print(code,type(code))
             if len(code) == 4:
-                break
+                print(i, code)
+                return code
             img_element.click()
-            if i == 49:
+            if i == times-1:
                 self.driver.quit()
                 assert '验证码获取位数错误'
-        return code
+
 
     def img_code(self):
         #截屏
@@ -127,11 +137,15 @@ class EMBClogin():
         sharp_img = ImageEnhance.Contrast(imgcode).enhance(2.0)
         sharp_img.load()
 
-        time.sleep(2)
+        time.sleep(1)
         sharp_img.save(self.img_path.format('imgs_02'))
         #解析
-        code = pytesseract.image_to_string(sharp_img)
-        code.replace(' ','')
+        code = ''
+        for i in range(3):
+            code = pytesseract.image_to_string(sharp_img)
+            code.replace(' ','')
+            if code:
+                break
 
         return code
 
