@@ -37,7 +37,7 @@ class main():
 
     def open(self):
         # 打开浏览器
-        driver = webdriver.Chrome(service_args=['--ignore-ssl-errors=true', '--ssl-protocol=TLSv1'])
+        driver = webdriver.Chrome()
         driver.get(self.url)
         driver.implicitly_wait(10)
         # 浏览器最大化
